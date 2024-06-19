@@ -42,9 +42,9 @@ class MultiCamApp(App):
             else:
                 # Create a blank image with error text
                 frame = np.zeros((480, 640, 3), dtype=np.uint8)
-                frame = self.draw_status_circle(frame, 'yellow')
+                frame = self.draw_status_circle(frame, 'red')
                 cv2.putText(frame, 'No Connection', (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3, cv2.LINE_AA)
-                buf = frame.tostring()  # Do not flip the frame
+                buf = cv2.flip(frame, 0).tostring()
                 texture = self.images[i].texture
                 if not texture or texture.size != (frame.shape[1], frame.shape[0]):
                     texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
@@ -67,6 +67,8 @@ class MultiCamApp(App):
     def draw_status_circle(self, frame, status):
         if status == 'green':
             color = (0, 255, 0)  # Green
+        elif status == 'blue':
+            color = (0, 0, 255)  # Blue
         elif status == 'yellow':
             color = (0, 255, 255)  # Yellow
         elif status == 'red':
