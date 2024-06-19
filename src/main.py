@@ -74,7 +74,6 @@ class MultiCamApp(App):
             texture = image_widget.texture
             if not texture or texture.size != (frame.shape[1], frame.shape[0]):
                 texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
-                texture.flip_vertical()
             texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
             image_widget.texture = texture
         else:
@@ -85,7 +84,6 @@ class MultiCamApp(App):
             texture = image_widget.texture
             if not texture or texture.size != (frame.shape[1], frame.shape[0]):
                 texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
-                texture.flip_vertical()
             texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
             image_widget.texture = texture
 
