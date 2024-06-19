@@ -1,6 +1,8 @@
 from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.image import Image
+from kivy.uix.label import Label
+from kivy.uix.boxlayout import BoxLayout
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import cv2
@@ -12,17 +14,21 @@ class MultiCamApp(App):
         self.layout = GridLayout(rows=2, cols=2)
 
         self.cameras = [
-            {"ip": "192.168.1.101", "port": 8081},  # Camera 1
-            {"ip": "192.168.1.102", "port": 8081},  # Camera 2
-            {"ip": "192.168.1.103", "port": 8081},  # Camera 3
-            {"ip": "192.168.1.103", "port": 8082},  # Camera 4
+            {"ip": "192.168.1.101", "port": 8081, "label": "Entrance"},  # Camera 1
+            {"ip": "192.168.1.102", "port": 8081, "label": "Backyard"},  # Camera 2
+            {"ip": "192.168.1.103", "port": 8081, "label": "Garage"},    # Camera 3
+            {"ip": "192.168.1.103", "port": 8082, "label": "Living Room"}  # Camera 4
         ]
 
-        self.images = []
-        for _ in self.cameras:
+        self.feeds = []
+        for cam in self.cameras:
+            box = BoxLayout(orientation='vertical')
             img = Image()
-            self.images.append(img)
-            self.layout.add_widget(img)
+            label = Label(text=cam["label"], size_hint_y=None, height=30)
+            box.add_widget(img)
+            box.add_widget(label)
+            self.feeds.append({"img": img, "label": label})
+            self.layout.add_widget(box)
 
         Clock.schedule_interval(self.update, 1.0 / 30.0)
         return self.layout
@@ -34,22 +40,22 @@ class MultiCamApp(App):
             if frame is not None:
                 frame = self.draw_status_circle(frame, 'green')
                 buf = cv2.flip(frame, 0).tostring()
-                texture = self.images[i].texture
+                texture = self.feeds[i]["img"].texture
                 if not texture or texture.size != (frame.shape[1], frame.shape[0]):
                     texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
                 texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
-                self.images[i].texture = texture
+                self.feeds[i]["img"].texture = texture
             else:
                 # Create a blank image with error text
                 frame = np.zeros((480, 640, 3), dtype=np.uint8)
                 frame = self.draw_status_circle(frame, 'red')
                 cv2.putText(frame, 'No Connection', (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3, cv2.LINE_AA)
                 buf = cv2.flip(frame, 0).tostring()
-                texture = self.images[i].texture
+                texture = self.feeds[i]["img"].texture
                 if not texture or texture.size != (frame.shape[1], frame.shape[0]):
                     texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
                 texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
-                self.images[i].texture = texture
+                self.feeds[i]["img"].texture = texture
 
     def get_camera_feed(self, ip, port):
         try:
@@ -65,6 +71,7 @@ class MultiCamApp(App):
             return None
 
     def draw_status_circle(self, frame, status):
+        height, width = frame.shape[:2]
         if status == 'green':
             color = (0, 255, 0)  # Green
         elif status == 'blue':
@@ -76,7 +83,7 @@ class MultiCamApp(App):
         else:
             color = (255, 255, 255)  # White, default case
 
-        cv2.circle(frame, (30, 30), 20, color, -1)
+        cv2.circle(frame, (width - 30, 30), 20, color, -1)
         return frame
 
 if __name__ == '__main__':
