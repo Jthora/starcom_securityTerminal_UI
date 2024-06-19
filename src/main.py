@@ -13,22 +13,19 @@ class MultiCamApp(App):
         # Use GridLayout with 2 rows and 2 columns
         self.layout = GridLayout(rows=2, cols=2)
 
+        # Define cameras: local and remote
         self.cameras = [
-            {"ip": "192.168.1.101", "port": 8081, "label": "Entrance"},  # Camera 1
-            {"ip": "192.168.1.102", "port": 8081, "label": "Backyard"},  # Camera 2
-            {"ip": "192.168.1.103", "port": 8081, "label": "Garage"},    # Camera 3
-            {"ip": "192.168.1.103", "port": 8082, "label": "Living Room"}  # Camera 4
+            {"ip": "127.0.0.1", "port": 8081},  # Local Camera 1
+            {"ip": "127.0.0.1", "port": 8082},  # Local Camera 2 (if applicable)
+            {"ip": "192.168.1.102", "port": 8081},  # Remote Camera 1
+            {"ip": "192.168.1.103", "port": 8081},  # Remote Camera 2
         ]
 
-        self.feeds = []
-        for cam in self.cameras:
-            box = BoxLayout(orientation='vertical')
+        self.images = []
+        for _ in self.cameras:
             img = Image()
-            label = Label(text=cam["label"], size_hint_y=None, height=30)
-            box.add_widget(img)
-            box.add_widget(label)
-            self.feeds.append({"img": img, "label": label})
-            self.layout.add_widget(box)
+            self.images.append(img)
+            self.layout.add_widget(img)
 
         Clock.schedule_interval(self.update, 1.0 / 30.0)
         return self.layout
@@ -36,26 +33,25 @@ class MultiCamApp(App):
     def update(self, dt):
         for i, cam in enumerate(self.cameras):
             frame = self.get_camera_feed(cam['ip'], cam['port'])
-            status = 'Connected' if frame is not None else 'No Camera Feed'
             if frame is not None:
-                frame = self.draw_status_circle(frame, 'green')
                 buf = cv2.flip(frame, 0).tostring()
-                texture = self.feeds[i]["img"].texture
+                texture = self.images[i].texture
                 if not texture or texture.size != (frame.shape[1], frame.shape[0]):
                     texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
+                    texture.flip_vertical()
                 texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
-                self.feeds[i]["img"].texture = texture
+                self.images[i].texture = texture
             else:
                 # Create a blank image with error text
                 frame = np.zeros((480, 640, 3), dtype=np.uint8)
-                frame = self.draw_status_circle(frame, 'red')
                 cv2.putText(frame, 'No Connection', (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3, cv2.LINE_AA)
                 buf = cv2.flip(frame, 0).tostring()
-                texture = self.feeds[i]["img"].texture
+                texture = self.images[i].texture
                 if not texture or texture.size != (frame.shape[1], frame.shape[0]):
                     texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
+                    texture.flip_vertical()
                 texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
-                self.feeds[i]["img"].texture = texture
+                self.images[i].texture = texture
 
     def get_camera_feed(self, ip, port):
         try:
