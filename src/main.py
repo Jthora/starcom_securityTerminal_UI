@@ -30,7 +30,9 @@ class MultiCamApp(App):
     def update(self, dt):
         for i, cam in enumerate(self.cameras):
             frame = self.get_camera_feed(cam['ip'], cam['port'])
+            status = 'Connected' if frame is not None else 'No Camera Feed'
             if frame is not None:
+                frame = self.draw_status_circle(frame, 'green')
                 buf = cv2.flip(frame, 0).tostring()
                 texture = self.images[i].texture
                 if not texture or texture.size != (frame.shape[1], frame.shape[0]):
@@ -40,8 +42,9 @@ class MultiCamApp(App):
             else:
                 # Create a blank image with error text
                 frame = np.zeros((480, 640, 3), dtype=np.uint8)
+                frame = self.draw_status_circle(frame, 'yellow')
                 cv2.putText(frame, 'No Connection', (50, 240), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3, cv2.LINE_AA)
-                buf = cv2.flip(frame, 0).tostring()
+                buf = frame.tostring()  # Do not flip the frame
                 texture = self.images[i].texture
                 if not texture or texture.size != (frame.shape[1], frame.shape[0]):
                     texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
@@ -60,6 +63,19 @@ class MultiCamApp(App):
         except Exception as e:
             print(f"[ERROR] [Failed to fetch frame from {ip}:{port}] {e}")
             return None
+
+    def draw_status_circle(self, frame, status):
+        if status == 'green':
+            color = (0, 255, 0)  # Green
+        elif status == 'yellow':
+            color = (0, 255, 255)  # Yellow
+        elif status == 'red':
+            color = (0, 0, 255)  # Red
+        else:
+            color = (255, 255, 255)  # White, default case
+
+        cv2.circle(frame, (30, 30), 20, color, -1)
+        return frame
 
 if __name__ == '__main__':
     MultiCamApp().run()
