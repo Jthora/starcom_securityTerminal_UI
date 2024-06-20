@@ -1,7 +1,8 @@
 from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
-from kivy.uix.image import Image
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.image import Image
+from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import cv2
@@ -17,21 +18,38 @@ class MultiCamApp(App):
         
         # Grid layout with 2 rows and 2 columns
         self.grid_layout = GridLayout(rows=2, cols=2)
-        
+
+        # Define camera feeds with IP, port, status, and label
         self.cameras = [
-            {"ip": "127.0.0.1", "port": 8081, "status": "green"},  # Local Camera 1
-            {"ip": "127.0.0.1", "port": 8082, "status": "blue"},  # Local Camera 2 (if applicable)
-            {"ip": "192.168.1.102", "port": 8081, "status": "yellow"},  # Remote Camera 1
-            {"ip": "192.168.1.103", "port": 8081, "status": "red"},  # Remote Camera 2
+            {"ip": "127.0.0.1", "port": 8081, "status": "green", "label": "Local Camera 1"},
+            {"ip": "127.0.0.1", "port": 8082, "status": "blue", "label": "Local Camera 2"},
+            {"ip": "192.168.1.102", "port": 8081, "status": "yellow", "label": "Remote Camera 1"},
+            {"ip": "192.168.1.103", "port": 8081, "status": "red", "label": "Remote Camera 2"},
         ]
 
-        self.images = []
+        self.image_widgets = []
+        self.label_widgets = []
+        
         for i in range(4):
+            # Create a BoxLayout to hold the image and the label
+            cam_layout = BoxLayout(orientation='vertical')
+            
+            # Create the image widget
             img = Image()
             img.index = i
             img.bind(on_touch_down=self.on_image_touch)
-            self.images.append(img)
-            self.grid_layout.add_widget(img)
+            self.image_widgets.append(img)
+            
+            # Create the label widget
+            label = Label(text=f"{self.cameras[i]['label']}\nIP: {self.cameras[i]['ip']}", size_hint_y=None, height=30)
+            self.label_widgets.append(label)
+            
+            # Add the image and label to the BoxLayout
+            cam_layout.add_widget(img)
+            cam_layout.add_widget(label)
+            
+            # Add the BoxLayout to the grid layout
+            self.grid_layout.add_widget(cam_layout)
         
         # Add grid layout to the main layout
         self.main_layout.add_widget(self.grid_layout)
@@ -66,7 +84,7 @@ class MultiCamApp(App):
             for i, cam in enumerate(self.cameras):
                 frame = self.get_camera_feed(cam['ip'], cam['port'])
                 frame = self.draw_status_circle(frame, cam['status'])
-                self.update_image(self.images[i], frame)
+                self.update_image(self.image_widgets[i], frame)
 
     def update_image(self, image_widget, frame):
         if frame is not None:
