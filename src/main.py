@@ -3,10 +3,12 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
+from kivy.uix.button import Button
 from kivy.clock import Clock
 from kivy.graphics.texture import Texture
 import cv2
 import numpy as np
+import threading
 
 class MultiCamApp(App):
     def build(self):
@@ -19,37 +21,16 @@ class MultiCamApp(App):
         # Grid layout with 2 rows and 2 columns
         self.grid_layout = GridLayout(rows=2, cols=2)
 
-        # Define camera feeds with IP, port, status, and label
-        self.cameras = [
-            {"ip": "127.0.0.1", "port": 8081, "status": "green", "label": "Local Camera 1"},
-            {"ip": "127.0.0.1", "port": 8082, "status": "blue", "label": "Local Camera 2"},
-            {"ip": "192.168.1.102", "port": 8081, "status": "yellow", "label": "Remote Camera 1"},
-            {"ip": "192.168.1.103", "port": 8081, "status": "red", "label": "Remote Camera 2"},
-        ]
+        # Initial empty camera list
+        self.cameras = []
 
         self.image_widgets = []
         self.label_widgets = []
         
-        for i in range(4):
-            # Create a BoxLayout to hold the image and the label
-            cam_layout = BoxLayout(orientation='vertical')
-            
-            # Create the image widget
-            img = Image()
-            img.index = i
-            img.bind(on_touch_down=self.on_image_touch)
-            self.image_widgets.append(img)
-            
-            # Create the label widget
-            label = Label(text=f"{self.cameras[i]['label']}\nIP: {self.cameras[i]['ip']}", size_hint_y=None, height=30)
-            self.label_widgets.append(label)
-            
-            # Add the image and label to the BoxLayout
-            cam_layout.add_widget(img)
-            cam_layout.add_widget(label)
-            
-            # Add the BoxLayout to the grid layout
-            self.grid_layout.add_widget(cam_layout)
+        # Scan button
+        self.scan_button = Button(text='Scan for Cameras', size_hint_y=None, height=50)
+        self.scan_button.bind(on_press=self.scan_for_cameras)
+        self.main_layout.add_widget(self.scan_button)
         
         # Add grid layout to the main layout
         self.main_layout.add_widget(self.grid_layout)
@@ -60,6 +41,51 @@ class MultiCamApp(App):
         
         Clock.schedule_interval(self.update, 1.0 / 30.0)
         return self.main_layout
+
+    def scan_for_cameras(self, instance):
+        # Clear current cameras
+        self.cameras.clear()
+        self.grid_layout.clear_widgets()
+        self.image_widgets.clear()
+        self.label_widgets.clear()
+        
+        # Define IP and port ranges to scan
+        local_ips = ['127.0.0.1']
+        remote_ips = ['192.168.1.{}'.format(i) for i in range(100, 105)]
+        ports = [8081, 8082]
+        
+        # Start scanning in a separate thread
+        threading.Thread(target=self.scan_ips_and_ports, args=(local_ips + remote_ips, ports)).start()
+
+    def scan_ips_and_ports(self, ips, ports):
+        for ip in ips:
+            for port in ports:
+                if self.check_camera_feed(ip, port):
+                    label = f"Camera at {ip}:{port}"
+                    self.cameras.append({"ip": ip, "port": port, "status": "green", "label": label})
+                    self.add_camera_widget(ip, label)
+        
+    def check_camera_feed(self, ip, port):
+        try:
+            cap = cv2.VideoCapture(f"http://{ip}:{port}")
+            ret, _ = cap.read()
+            cap.release()
+            return ret
+        except Exception as e:
+            print(f"[ERROR] [Failed to fetch frame from {ip}:{port}] {e}")
+            return False
+
+    def add_camera_widget(self, ip, label):
+        cam_layout = BoxLayout(orientation='vertical')
+        img = Image()
+        img.index = len(self.image_widgets)
+        img.bind(on_touch_down=self.on_image_touch)
+        self.image_widgets.append(img)
+        lbl = Label(text=label, size_hint_y=None, height=30)
+        self.label_widgets.append(lbl)
+        cam_layout.add_widget(img)
+        cam_layout.add_widget(lbl)
+        self.grid_layout.add_widget(cam_layout)
 
     def on_image_touch(self, instance, touch):
         if instance.collide_point(*touch.pos):
@@ -72,6 +98,7 @@ class MultiCamApp(App):
         if instance.collide_point(*touch.pos):
             self.is_full_screen = False
             self.main_layout.clear_widgets()
+            self.main_layout.add_widget(self.scan_button)
             self.main_layout.add_widget(self.grid_layout)
 
     def update(self, dt):
